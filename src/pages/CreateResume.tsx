@@ -4,19 +4,25 @@ import { toast } from 'sonner';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import PersonalInfoForm from '../components/ui/ResumeForm/PersonalInfoForm';
-import { ResumeContent, WorkExperience, Education, Certification } from '../types';
+import { Resume } from '../types';
+import { generateResumeDocx } from '../utils/generateResumeDocx';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { saveAs } from 'file-saver';
+
+// Define a type for the form data that omits backend fields
+type ResumeFormData = Omit<Resume, '_id' | 'userId' | 'type' | 'createdAt' | 'updatedAt'>;
 import { FileText, Save, Download, Wand2 } from 'lucide-react';
 import { improveSummary, addResume } from '../utils/axios';
+import { formatMonthYear } from '../utils/cn';
 
 const CreateResume: React.FC = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [jobDescription, setJobDescription] = useState('');
-  const [resumeTitle, setResumeTitle] = useState('');
-
-  const [formData, setFormData] = useState<ResumeContent>({
+  const [showPreview, setShowPreview] = useState(true);
+  const [formData, setFormData] = useState<ResumeFormData>({
+    title: "",
     personalInfo: {
       name: '',
       email: '',
@@ -25,7 +31,8 @@ const CreateResume: React.FC = () => {
       website: '',
       linkedin: '',
     },
-    summary: '',
+    summary: 'I have 5 years of experience in software development, specializing in full-stack web applications. I am proficient in JavaScript, React, Node.js, and have a strong background in Agile methodologies.',
+    description: 'I hope to be hired in software dev team of Sysmic',
     workExperience: [
       {
         id: crypto.randomUUID(),
@@ -52,7 +59,7 @@ const CreateResume: React.FC = () => {
         gpa: '',
       },
     ],
-    skills: [''],
+    skills: [],
     certifications: [
       {
         id: crypto.randomUUID(),
@@ -163,13 +170,9 @@ const CreateResume: React.FC = () => {
 
   // Skills Handler
   const handleSkillsChange = (skillsString: string) => {
-    const skillsArray = skillsString
-      .split(',')
-      .map(skill => skill.trim())
-      .filter(skill => skill !== '');
     setFormData({
       ...formData,
-      skills: skillsArray.length ? skillsArray : [''],
+      skills: skillsString.split('\n').map(skill => skill.trim()),
     });
   };
 
@@ -213,8 +216,7 @@ const CreateResume: React.FC = () => {
   // Save resume
   const handleSave = async () => {
     try {
-      // In a real app, this would call an API to save the resume
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await addResume(formData);
       toast.success('Resume saved successfully!');
       navigate('/dashboard');
     } catch (error) {
@@ -223,122 +225,144 @@ const CreateResume: React.FC = () => {
   };
 
   // Download resume
-  const handleDownload = async (format: 'pdf' | 'docx') => {
-    try {
-      // In a real app, this would generate and download the file
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success(`Resume downloaded as ${format.toUpperCase()}`);
-    } catch (error) {
-      toast.error(`Failed to download resume as ${format.toUpperCase()}`);
+  const handleDownload = async (type: string) => {
+    const resumeElement = document.querySelector('#resume-preview') as HTMLElement;
+
+    if (!resumeElement) return;
+
+    if (type === 'pdf') {
+      const canvas = await html2canvas(resumeElement, {
+        scale: 2,
+        useCORS: true
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('resume.pdf');
+    } else if (type === 'doc') {
+      const html = `<!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <style>
+            body { font-family: serif; padding: 2rem; }
+          </style>
+        </head>
+        <body>
+          ${resumeElement.innerHTML}
+        </body>
+        </html>`;
+
+      const blob = new Blob([html], {
+        type: 'application/msword'
+      });
+
+      saveAs(blob, 'resume.doc');
     }
   };
 
   // Generate resume using AI
   const generateResume = async () => {
-    console.log(formData);
     setIsGenerating(true);
 
     try {
-      const response = await addResume(formData, resumeTitle, jobDescription);
-      // const improvedSummary = await improveSummary(formData.summary, jobDescription);
-      // alert(improvedSummary);
-      // setFormData({
-      //   ...formData,
-      //   summary: improvedSummary,
-      // });
-
-      try {
-        // In a real app, this would call an AI API
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        toast.success('Resume generated successfully!');
-        setShowPreview(true);
-      } catch (error) {
-        toast.error('Failed to generate resume');
-      } finally {
-        setIsGenerating(false);
-      }
-
+      // const response = await addResume(formData, resumeTitle, jobDescription);
+      const summaryResult = await improveSummary(formData.summary, formData.description);
+      const improvedSummary = summaryResult.replace(/^"(.*)"$/, '$1');
+      setFormData({
+        ...formData,
+        summary: improvedSummary,
+      });
+      toast.success('Resume generated successfully!');
+      setShowPreview(true);
     } catch (error) {
+      console.error(error);
       toast.error('Failed to improve summary');
+    } finally {
+        setIsGenerating(false);
     }
-    
     
   };
 
   // Preview component
   const ResumePreview = () => (
-    <div className="bg-white p-8 rounded-lg shadow-lg">
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">{formData.personalInfo.name}</h2>
-        <div className="text-gray-600 mt-2">
-          <p>{formData.personalInfo.email} • {formData.personalInfo.phone}</p>
-          <p>{formData.personalInfo.location}</p>
-          {formData.personalInfo.linkedin && <p>LinkedIn: {formData.personalInfo.linkedin}</p>}
-          {formData.personalInfo.website && <p>Website: {formData.personalInfo.website}</p>}
-        </div>
-      </div>
-
-      {formData.summary && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Professional Summary</h3>
-          <p className="text-gray-700">{formData.summary}</p>
-        </div>
-      )}
-
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Work Experience</h3>
-        {formData.workExperience.map((exp) => (
-          <div key={exp.id} className="mb-4">
-            <div className="flex justify-between">
-              <h4 className="font-medium text-gray-900">{exp.position}</h4>
-              <span className="text-gray-600">{exp.startDate} - {exp.isCurrent ? 'Present' : exp.endDate}</span>
+      <div className="bg-white p-10 rounded-2xl shadow-md max-w-2xl mx-auto font-serif" id="resume-preview">
+        <div className="text-center pb-6 mb-6">
+          <h1 className="text-3xl font-bold tracking-wide uppercase text-gray-900">{formData.personalInfo.name}</h1>
+          <p className="text-lg text-gray-700 mt-1">{formData.title}</p>
+          <div className="text-sm text-gray-600 mt-2">
+            <p className='mb-2'>{formData.personalInfo.phone}  •  {formData.personalInfo.location}  •  {formData.personalInfo.email}</p>
+            <p>
+              {formData.personalInfo.linkedin}
+              {formData.personalInfo.linkedin && formData.personalInfo.website && '  •  '}
+              {formData.personalInfo.website}
+            </p>
             </div>
-            <p className="text-gray-700">{exp.companyName}</p>
-            <p className="text-gray-600 mb-2">{exp.location}</p>
-            <p className="text-gray-700">{exp.description}</p>
-            {/* {exp.achievements.length > 0 && (
-              <ul className="list-disc list-inside mt-2">
-                {exp.achievements.map((achievement, index) => (
-                  <li key={index} className="text-gray-700">{achievement}</li>
-                ))}
-              </ul>
-            )} */}
-          </div>
-        ))}
-      </div>
-
-      <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Education</h3>
-        {formData.education.map((edu) => (
-          <div key={edu.id} className="mb-4">
-            <div className="flex justify-between">
-              <h4 className="font-medium text-gray-900">{edu.degree}</h4>
-              <span className="text-gray-600">{edu.startDate} - {edu.isCurrent ? 'Present' : edu.endDate}</span>
-            </div>
-            <p className="text-gray-700">{edu.institution}</p>
-            <p className="text-gray-600">{edu.location}</p>
-            {edu.gpa && <p className="text-gray-600">GPA: {edu.gpa}</p>}
-          </div>
-        ))}
-      </div>
-
-      {formData.skills.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Skills</h3>
-          <div className="flex flex-wrap gap-2">
-            {formData.skills.map((skill, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
         </div>
-      )}
-    </div>
+  
+        {formData.summary && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2 border-b border-black">Professional Summary</h2>
+            <p className="text-gray-800 text-sm leading-relaxed">{formData.summary}</p>
+          </div>
+        )}
+  
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-black">Experience</h2>
+          {formData.workExperience.map((exp) => (
+            <div key={exp.id} className="mb-5">
+              <div className="flex justify-between">
+                <h3 className="text-md font-bold text-gray-900">{exp.position}</h3>
+                <span className="text-sm text-gray-600">{formatMonthYear(exp.startDate)} - {exp.isCurrent ? 'Present' : formatMonthYear(exp.endDate || '')}</span>
+              </div>
+              <p className="italic text-sm text-gray-700">{exp.companyName} - {exp.location}</p>
+              <p className="text-sm text-gray-800 mt-1 leading-relaxed">{exp.description}</p>
+            </div>
+          ))}
+        </div>
+  
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 border-b border-black">Education</h2>
+          {formData.education.map((edu) => (
+            <div key={edu.id} className="mb-5">
+              <div className="flex justify-between">
+                <h3 className="text-md font-bold text-gray-900">{edu.degree}</h3>
+                <span className="text-sm text-gray-600">{formatMonthYear(edu.startDate)} - {edu.isCurrent ? 'Present' : formatMonthYear(edu.endDate || '')}</span>
+              </div>
+              <p className="italic text-sm text-gray-700">{edu.institution} - {edu.location}</p>
+              {edu.gpa && <p className="text-sm text-gray-600">GPA: {edu.gpa}</p>}
+            </div>
+          ))}
+        </div>
+  
+        {formData.skills.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2 border-b border-black" >Skills</h2>
+            <ul className="list-disc list-inside text-sm text-gray-800 columns-2 gap-x-10">
+              {formData.skills.map((skill, index) => (
+                <li key={index}>{skill}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+  
+        {formData.certifications && formData.certifications.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2 border-b border-black">Certifications</h2>
+            <ul className="list-disc list-inside text-sm text-gray-800 columns-2 gap-x-30">
+              {formData.certifications.map((cert, index) => (
+                <li key={index}>{cert.name}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
   );
+
 
   // Render form steps
   const renderStep = () => {
@@ -353,8 +377,8 @@ const CreateResume: React.FC = () => {
               <input
                 type="text"
                 id="resumeTitle"
-                value={resumeTitle}
-                onChange={(e) => setResumeTitle(e.target.value)}
+                value={formData.title}
+                onChange={(e) => handleFormChange('title', e.target.value)}
                 placeholder="e.g., Software Engineer Resume"
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                 required
@@ -656,13 +680,14 @@ const CreateResume: React.FC = () => {
             <div>
               <h3 className="text-lg font-medium text-gray-900">Skills</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Enter your skills separated by commas (e.g., JavaScript, React, Node.js)
+                Enter one skill per line (e.g.,<br/>JavaScript<br/>React<br/>Machine Learning)
               </p>
               <textarea
-                value={formData.skills.join(', ')}
+                value={formData.skills.join('\n')}
                 onChange={(e) => handleSkillsChange(e.target.value)}
-                rows={4}
+                rows={6}
                 className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
+                placeholder="e.g.\nJavaScript\nReact\nMachine Learning"
               />
             </div>
             
@@ -787,8 +812,8 @@ const CreateResume: React.FC = () => {
                 Paste the job description you're applying for to help our AI tailor your resume.
               </p>
               <textarea
-                value={jobDescription}
-                onChange={(e) =>setJobDescription(e.target.value)}
+                value={formData.description}
+                onChange={(e) =>handleFormChange('description', e.target.value)}
                 rows={8}
                 className="mt-2 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
                 placeholder="Paste the job description here..."
@@ -894,11 +919,18 @@ const CreateResume: React.FC = () => {
               <div className="flex justify-end gap-3">
                 <Button
                   variant="outline"
+                  onClick={() => generateResumeDocx(formData)}
+                  icon={<Download className="h-4 w-4" />}
+                >
+                  Download
+                </Button>
+                {/* <Button
+                  variant="outline"
                   onClick={() => handleDownload('pdf')}
                   icon={<Download className="h-4 w-4" />}
                 >
                   Download PDF
-                </Button>
+                </Button> */}
                 <Button
                   onClick={handleSave}
                   icon={<Save className="h-4 w-4" />}

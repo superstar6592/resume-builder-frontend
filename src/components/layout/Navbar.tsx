@@ -34,7 +34,7 @@ const Navbar: React.FC = () => {
 
           {/* Desktop navigation */}
           <div className="hidden md:flex md:items-center md:space-x-8">
-            {isAuthenticated ? (
+            {/* {isAuthenticated ? (
               <>
                 <Link 
                   to="/resumes" 
@@ -88,7 +88,7 @@ const Navbar: React.FC = () => {
                   Resources
                 </Link>
               </>
-            )}
+            )} */}
             
             {isAuthenticated ? (
               <div className="relative">

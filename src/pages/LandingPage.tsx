@@ -178,7 +178,6 @@ const LandingPage: React.FC = () => {
               <ul className="mt-4 space-y-2">
                 <li><Link to="/resumes" className="text-gray-400 hover:text-white">Resumes</Link></li>
                 <li><Link to="/cover-letters" className="text-gray-400 hover:text-white">Cover Letters</Link></li>
-                <li><Link to="/cvs" className="text-gray-400 hover:text-white">CVs</Link></li>
               </ul>
             </div>
             <div>

@@ -18,7 +18,7 @@ const CareerTips: React.FC = () => {
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Building Your Personal Brand</h2>
               <p className="text-gray-600 mb-4">Learn how to create and maintain a strong personal brand that sets you apart in your industry.</p>
-              <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Read more →</a>
+              {/* <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Read more →</a> */}
             </div>
           </article>
 
@@ -31,7 +31,7 @@ const CareerTips: React.FC = () => {
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Networking Strategies</h2>
               <p className="text-gray-600 mb-4">Discover effective networking techniques to build meaningful professional relationships.</p>
-              <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Read more →</a>
+              {/* <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Read more →</a> */}
             </div>
           </article>
 
@@ -44,7 +44,7 @@ const CareerTips: React.FC = () => {
             <div className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Skill Development</h2>
               <p className="text-gray-600 mb-4">Stay competitive by learning which skills are in demand and how to acquire them.</p>
-              <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Read more →</a>
+              {/* <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">Read more →</a> */}
             </div>
           </article>
         </div>

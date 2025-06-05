@@ -74,8 +74,8 @@ const AboutUs: React.FC = () => {
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
             We're always looking for talented individuals who share our passion for helping people succeed in their careers.
           </p>
-          <a href="/careers" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700">
-            View Open Positions
+          <a href="/" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700">
+            Go to home
           </a>
         </div>
       </main>

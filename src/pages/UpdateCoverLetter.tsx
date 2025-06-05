@@ -1,16 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import Navbar from '../components/layout/Navbar';
 import Button from '../components/ui/Button';
 import { FileText, Wand2, Download } from 'lucide-react';
-import { generateCoverLetter as generateCoverLetterApi, addCoverLetter } from '../utils/axios';
+import { generateCoverLetter as generateCoverLetterApi, updateCoverLetter } from '../utils/axios';
+import { CoverLetter } from '../types';
+import { useParams } from 'react-router-dom';
+import { getCoverLetter } from '../utils/axios';
+import { generateCoverLetterDocx } from '../utils/generateCoverLetterDocx';
 
-const CreateCoverLetter: React.FC = () => {
+const UpdateCoverLetter: React.FC = () => {
   const navigate = useNavigate();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState('');
+  const [generatedContent, setGeneratedContent] = useState<string>();
   const [showPreview, setShowPreview] = useState(true);
+  const { id } = useParams<{ id: string }>();
   
   const [formData, setFormData] = useState({
     recipientName: 'David Ken',
@@ -22,6 +27,22 @@ const CreateCoverLetter: React.FC = () => {
     writingTone: 'professional', // professional, friendly, confident
     applicantName: 'Roman',
   });
+
+  useEffect(() => {
+    // If an ID is provided, fetch the existing resume data
+    if (id) {
+    const fetchResume = async () => {
+        try {
+        const response = await getCoverLetter(id);
+        setFormData(response);
+        setGeneratedContent(response.content);
+        } catch (error) {
+        toast.error('Failed to fetch resume data');
+        }
+    };
+    fetchResume();
+    }
+}, []);
 
   const generateCoverLetter = async () => {
       setIsGenerating(true);
@@ -43,55 +64,18 @@ const CreateCoverLetter: React.FC = () => {
 
   const handleSave = async () => {
     try {
-      await addCoverLetter(formData, generatedContent);
-      toast.success('Cover letter saved successfully!');
-      navigate('/dashboard'); // Replace with actual next step route
-    } catch (error) {
-      console.error('Error saving cover letter:', error);
-      toast.error('Failed to save cover letter. Please try again.');
-      return;
-    }
+        if (!id) {
+          toast.error('Resume ID is missing');
+          return;
+        }
+        await updateCoverLetter(id, formData, generatedContent);
+        toast.success('Resume Updated successfully!');
+        navigate('/dashboard');
+      } catch (error) {
+        toast.error('Failed to save resume');
+      }
     
   };
-
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-//     setIsGenerating(true);
-
-//     try {
-//       // In a real app, this would call an AI API endpoint
-//       // Example API call structure:
-//       // const response = await fetch('/api/generate-cover-letter', {
-//       //   method: 'POST',
-//       //   headers: { 'Content-Type': 'application/json' },
-//       //   body: JSON.stringify(formData)
-//       // });
-//       // const data = await response.json();
-//       // setGeneratedContent(data.content);
-
-//       // Simulate API call
-//       await new Promise(resolve => setTimeout(resolve, 2000));
-
-//       // Simulate generated content
-//       const mockGeneratedContent = `Dear ${formData.recipientName || 'Hiring Manager'},
-
-// I am writing to express my strong interest in the ${formData.jobTitle} position at ${formData.companyName}. With my background in ${formData.relevantExperience.split('.')[0]}, I am confident in my ability to contribute effectively to your team.
-
-// [AI-generated content would be inserted here based on job description and experience]
-
-// Thank you for considering my application. I look forward to discussing how I can contribute to ${formData.companyName}'s success.
-
-// Best regards,
-//   ${formData.applicantName}`;
-
-//       setGeneratedContent(mockGeneratedContent);
-//       toast.success('Cover letter generated successfully!');
-//     } catch (error) {
-//       toast.error('Failed to generate cover letter. Please try again.');
-//     } finally {
-//       setIsGenerating(false);
-//     }
-//   };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -100,7 +84,7 @@ const CreateCoverLetter: React.FC = () => {
         <div className="bg-white shadow rounded-lg p-6 md:p-8">
           <div className="flex items-center mb-6">
             <FileText className="h-8 w-8 text-primary-600 mr-3" />
-            <h1 className="text-2xl font-bold text-gray-900">Create Cover Letter</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Edit Cover Letter</h1>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -260,10 +244,7 @@ const CreateCoverLetter: React.FC = () => {
                   <div className="mt-4 flex justify-end space-x-4">
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        // In a real app, this would download as PDF
-                        toast.success('Cover letter downloaded as PDF');
-                      }}
+                      onClick={() => generateCoverLetterDocx(generatedContent)}
                       icon={<Download className="h-4 w-4" />}
                     >
                       Download
@@ -291,4 +272,4 @@ const CreateCoverLetter: React.FC = () => {
   );
 };
 
-export default CreateCoverLetter;
+export default UpdateCoverLetter;

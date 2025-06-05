@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ResumeContent } from '../../../types';
+import { Resume } from '../../../types';
 import { countries, formatLocation } from '../../../utils/locationData';
 
+type ResumeFormData = Omit<Resume, '_id' | 'userId' | 'type' | 'createdAt' | 'updatedAt'>;
+
 interface PersonalInfoFormProps {
-  formData: ResumeContent;
+  formData: ResumeFormData;
   onChange: (field: string, value: any) => void;
 }
 
 const PersonalInfoForm: React.FC<PersonalInfoFormProps> = ({ formData, onChange }) => {
   const [selectedCountry, setSelectedCountry] = useState('US');
-  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedCity, setSelectedCity] = useState('New York');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

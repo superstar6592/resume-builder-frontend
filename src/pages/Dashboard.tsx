@@ -1,37 +1,56 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { File, FileText, Plus, Edit, Download, Trash2, Search, FileCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Button from '../components/ui/Button';
 import Navbar from '../components/layout/Navbar';
-import { mockResumes } from '../utils/mockData';
+// import { mockResumes } from '../utils/mockData';
 import { toast } from 'sonner';
-import { Resume } from '../types';
+import { Resume, CoverLetter } from '../types';
+import { getAllResume, getAllCoverLetter, deleteResume, deleteCoverLetter } from '../utils/axios'; // Adjust the import based on your API structure
 
 const Dashboard: React.FC = () => {
-  const [documents, setDocuments] = useState<Resume[]>(mockResumes);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'resume' | 'coverLetter'>('all');
+  const [documents, setDocuments] = useState<Resume[] | CoverLetter[]>();
+  const [searchQuery] = useState('');
+  const [filter, setFilter] = useState<'resume' | 'coverLetter'>('resume');
   const navigate = useNavigate();
 
-  const handleDelete = (id: string) => {
-    setDocuments(documents.filter(doc => doc.id !== id));
-    toast.success('Document deleted successfully');
-  };
+  // const handleDownloadPDF = (doc: Resume) => {
+  //   toast.success(`Downloaded ${doc.title} as PDF`);
+  // };
 
-  const handleDownloadPDF = (doc: Resume) => {
-    toast.success(`Downloaded ${doc.title} as PDF`);
-  };
-
-  const handleDownloadDOCX = (doc: Resume) => {
-    toast.success(`Downloaded ${doc.title} as DOCX`);
-  };
-
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' || doc.type === filter;
+  const filteredDocuments = (documents ?? []).filter(doc => {
+    let matchesSearch = false;
+    if (doc.type === 'resume' && 'title' in doc && typeof doc.title === 'string') {
+      matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+    } else if (doc.type === 'coverLetter') {
+      const company = 'companyName' in doc && typeof doc.companyName === 'string' ? doc.companyName : '';
+      const job = 'jobTitle' in doc && typeof doc.jobTitle === 'string' ? doc.jobTitle : '';
+      matchesSearch =
+        company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.toLowerCase().includes(searchQuery.toLowerCase());
+    }
+    const matchesFilter = doc.type === filter;
     return matchesSearch && matchesFilter;
   });
+
+  useEffect (() => {
+
+    const fetchDocuments = async () => {
+      if (filter === 'resume') {
+        const result = await getAllResume();
+        setDocuments(result);
+        return;
+      } else {
+        const result = await getAllCoverLetter();
+        setDocuments(result);
+        return;
+      }
+    };
+
+    fetchDocuments();
+  
+  }, [filter])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -47,12 +66,12 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="mt-4 md:mt-0 flex flex-wrap gap-3">
             <Link to="/create-resume">
-              <Button icon={<FileText className="h-4 w-4" />}>
+              <Button icon={<FileText className="h-4 w-4" />} onClick={() => setFilter('resume')}>
                 Create Resume
               </Button>
             </Link>
             <Link to="/create-cover-letter">
-              <Button variant="secondary" icon={<FileCheck className="h-4 w-4" />}>
+              <Button variant="secondary" icon={<FileCheck className="h-4 w-4" />} onClick={() => setFilter('coverLetter')}>
                 Create Cover Letter
               </Button>
             </Link>
@@ -74,12 +93,12 @@ const Dashboard: React.FC = () => {
             />
           </div> */}
           <div className="flex gap-2">
-            <Button
+            {/* <Button
               variant={filter === 'all' ? 'primary' : 'outline'}
               onClick={() => setFilter('all')}
             >
               All
-            </Button>
+            </Button> */}
             <Button
               variant={filter === 'resume' ? 'primary' : 'outline'}
               onClick={() => setFilter('resume')}
@@ -98,14 +117,14 @@ const Dashboard: React.FC = () => {
         {/* Document List */}
         {filteredDocuments.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredDocuments.map((doc) => (
+            {filteredDocuments.map((doc, index) => (
               <DocumentCard
-                key={doc.id}
+                key={index}
                 document={doc}
-                onEdit={() => navigate(doc.type === 'resume' ? `/update-resume/${doc.id}` : `/update-cover-letter/${doc.id}`)}
-                onDelete={() => handleDelete(doc.id)}
-                onDownloadPDF={() => handleDownloadPDF(doc)}
-                onDownloadDOCX={() => handleDownloadDOCX(doc)}
+                onEdit={() => navigate(doc.type === 'resume' ? `/update-resume/${doc._id}` : `/update-coverLetter/${doc._id}`)}
+                // onDelete={() => {}}
+                // onDownloadPDF={() => handleDownloadPDF(doc)}
+                // onDownloadDOCX={() => handleDownloadDOCX(doc)}
               />
             ))}
           </div>
@@ -116,7 +135,7 @@ const Dashboard: React.FC = () => {
             <p className="mt-1 text-gray-500">
               {searchQuery ? 'No documents match your search query.' : 'Get started by creating your first document.'}
             </p>
-            {!searchQuery && (
+            {/* {!searchQuery && (
               <div className="mt-6 flex justify-center gap-4">
                 <Link to="/create-resume">
                   <Button icon={<FileText className="h-4 w-4" />}>
@@ -129,7 +148,7 @@ const Dashboard: React.FC = () => {
                   </Button>
                 </Link>
               </div>
-            )}
+            )} */}
           </div>
         )}
       </main>
@@ -138,12 +157,12 @@ const Dashboard: React.FC = () => {
 };
 
 const DocumentCard: React.FC<{
-  document: Resume;
+  document: Resume | CoverLetter;
   onEdit: () => void;
-  onDelete: () => void;
-  onDownloadPDF: () => void;
-  onDownloadDOCX: () => void;
-}> = ({ document, onEdit, onDelete, onDownloadPDF, onDownloadDOCX }) => {
+  // onDelete: () => void;
+  // onDownloadPDF: () => void;
+  // onDownloadDOCX: () => void;
+}> = ({ document, onEdit }) => {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -156,7 +175,39 @@ const DocumentCard: React.FC<{
   };
 
   const isResume = document.type === 'resume';
-  const content = document.content as any;
+
+    const handleDelete = async (id: string, type: string) => {
+    if (!document) return;
+    if (type === 'resume') {
+      try {
+        await deleteResume(id); // Assuming deleteResume is defined in your axios utils
+        toast.success('Resume deleted successfully');
+        window.location.reload();
+        setShowDropdown(false);
+      } catch (error) {
+        console.error("Error deleting resume:", error);
+        toast.error('Failed to delete resume');
+        return;
+      }
+      
+    } else if (type === 'coverLetter') {
+      try {
+        await deleteCoverLetter(id); // Assuming deleteResume is defined in your axios utils
+        toast.success('Cover letter deleted successfully');
+        setShowDropdown(false);
+        window.location.reload();
+      } catch (error) {
+        console.error("Error deleting resume:", error);
+        toast.error('Failed to delete resume');
+        return;
+      }
+      setShowDropdown(false);
+      toast.success('Cover Letter deleted successfully');
+    }
+    
+  };
+
+  // const content = document.content as any;
 
   return (
     <motion.div
@@ -184,7 +235,9 @@ const DocumentCard: React.FC<{
             </div>
             <div className="ml-3">
               <h3 className="text-lg font-medium text-gray-900 truncate max-w-[200px]">
-                {document.title}
+                {isResume
+                  ? (document as Resume).title
+                  : ((document as CoverLetter).companyName || (document as CoverLetter).jobTitle || 'Cover Letter')}
               </h3>
               <p className="text-sm text-gray-500">
                 Updated {formatDate(document.updatedAt)}
@@ -205,7 +258,7 @@ const DocumentCard: React.FC<{
             {showDropdown && (
               <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                 <div className="py-1" role="menu" aria-orientation="vertical">
-                  <button
+                  {/* <button
                     onClick={() => {
                       onDownloadPDF();
                       setShowDropdown(false);
@@ -226,12 +279,9 @@ const DocumentCard: React.FC<{
                   >
                     <Download className="mr-2 h-4 w-4" />
                     Download as DOCX
-                  </button>
+                  </button> */}
                   <button
-                    onClick={() => {
-                      onDelete();
-                      setShowDropdown(false);
-                    }}
+                    onClick={() => {  handleDelete(document._id, document.type); }}
                     className="flex items-center px-4 py-2 text-sm text-error-600 hover:bg-gray-100 w-full text-left"
                     role="menuitem"
                   >
@@ -249,33 +299,33 @@ const DocumentCard: React.FC<{
             <>
               <h4 className="text-sm font-medium text-gray-700">Position</h4>
               <p className="text-sm text-gray-600">
-                {content.workExperience[0]?.position || 'Not specified'}
+                {(Array.isArray(document.workExperience) && document.workExperience[0]?.position) || 'Not specified'}
               </p>
               
               <h4 className="mt-3 text-sm font-medium text-gray-700">Skills</h4>
               <div className="mt-1 flex flex-wrap gap-1">
-                {content.skills.slice(0, 3).map((skill: string, index: number) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
-                  >
-                    {skill}
-                  </span>
-                ))}
-                {content.skills.length > 3 && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                    +{content.skills.length - 3} more
-                  </span>
-                )}
+                {Array.isArray(document.skills) && document.skills.slice(0, 3).map((skill: string, index: number) => (
+    <span
+      key={index}
+      className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
+    >
+      {skill}
+    </span>
+  ))}
+  {Array.isArray(document.skills) && document.skills.length > 3 && (
+    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+      +{document.skills.length - 3} more
+    </span>
+  )}
               </div>
             </>
           ) : (
             <>
               <h4 className="text-sm font-medium text-gray-700">Company</h4>
-              <p className="text-sm text-gray-600">{content.companyName}</p>
+              <p className="text-sm text-gray-600">{document.companyName}</p>
               
               <h4 className="mt-3 text-sm font-medium text-gray-700">Position</h4>
-              <p className="text-sm text-gray-600">{content.jobTitle}</p>
+              <p className="text-sm text-gray-600">{document.jobTitle}</p>
             </>
           )}
         </div>

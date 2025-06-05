@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import CreateResume from './pages/CreateResume';
 import CreateCoverLetter from './pages/CreateCoverLetter';
 import UpdateResume from './pages/UpdateResume';
+import UpdateCoverLetter from './pages/UpdateCoverLetter';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -77,6 +78,15 @@ function App() {
         element={
           <ProtectedRoute>
             <UpdateResume />
+          </ProtectedRoute>
+        } 
+      />
+
+      <Route 
+        path="/update-coverLetter/:id" 
+        element={
+          <ProtectedRoute>
+            <UpdateCoverLetter />
           </ProtectedRoute>
         } 
       />

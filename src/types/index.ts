@@ -6,16 +6,12 @@ export interface User {
 }
 
 export interface Resume {
-  id: string;
+  _id: string;
   userId: string;
   title: string;
-  type: 'resume' | 'coverLetter';
+  type: 'resume';
   createdAt: string;
   updatedAt: string;
-  content: ResumeContent | CoverLetterContent;
-}
-
-export interface ResumeContent {
   personalInfo: {
     name: string;
     email: string;
@@ -25,19 +21,27 @@ export interface ResumeContent {
     linkedin?: string;
   };
   summary: string;
-  description?: string;
+  description: string;
   workExperience: WorkExperience[];
   education: Education[];
   skills: string[];
   certifications: Certification[];
 }
 
-export interface CoverLetterContent {
+export interface CoverLetter {
+  _id: string;
   recipientName: string;
   companyName: string;
   jobTitle: string;
+  description: string;
+  experience: string;
+  applicationDate: string;
+  custiomization: string;
   content: string;
-  tone: 'professional' | 'friendly' | 'confident';
+  type: 'coverLetter';
+  writingTone: 'professional' | 'friendly' | 'confident';
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WorkExperience {
